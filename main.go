@@ -31,7 +31,7 @@ func main() {
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("hiii ^-^"))
-	}
+	})
 	http.ListenAndServe(":"+port, r)
 	bot.Run()
 }
