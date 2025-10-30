@@ -246,11 +246,21 @@ func RemoveFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlit
 		return
 	}
 
-	err = db.RemoveFlight(database, flightNumber, time.Time{})
+	// Delete the most recent flight for this flight ID
+	_, err = database.Exec(`
+			DELETE FROM tracked_flights
+			WHERE flight_id = ?
+			  AND date_departure = (
+				SELECT MAX(date_departure)
+				FROM tracked_flights
+				WHERE flight_id = ?
+			  )
+		`, flightNumber, flightNumber)
+
 	if err != nil {
-		message = "Error removing flight from tracking."
+		message = fmt.Sprintf("Error removing latest flight %s: %v", flightNumber, err)
 	} else {
-		message = fmt.Sprintf("Flight %s has been removed from tracking.", flightNumber)
+		message = fmt.Sprintf("Latest flight %s has been removed from tracking.", flightNumber)
 	}
 
 	err = answerWebhook(r.FormValue("response_url"), message, false)
