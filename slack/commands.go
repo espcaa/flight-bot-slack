@@ -31,7 +31,6 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string)
 	}
 
 	commandText := r.FormValue("text")
-	channelID := r.FormValue("channel_id")
 	webhookURL := r.FormValue("response_url")
 
 	var flightNumber string
