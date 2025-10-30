@@ -14,7 +14,7 @@ import (
 	"time"
 )
 
-func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string, database *sqlite.DB) {
+func AddFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlite.DB) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -172,4 +172,89 @@ func parseDate(input string) (time.Time, error) {
 	}
 
 	return time.Time{}, fmt.Errorf("invalid date format")
+}
+
+func PrintAllTrackedFlights(w http.ResponseWriter, r *http.Request, database *sqlite.DB) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json_Response := `{
+		"response_type": "ephemeral",
+		"text": "processing your request..."
+	}`
+	w.Write([]byte(json_Response))
+
+	rows, err := database.Query("SELECT flight_id, date_departure, channel_id FROM tracked_flights")
+	if err != nil {
+		fmt.Println("Error querying database:", err)
+		return
+	}
+	defer rows.Close()
+
+	var message strings.Builder
+	message.WriteString("Tracked Flights:\n")
+
+	for rows.Next() {
+		var flightID string
+		var dateDeparture time.Time
+		var channelID string
+
+		err := rows.Scan(&flightID, &dateDeparture, &channelID)
+		if err != nil {
+			fmt.Println("Error scanning row:", err)
+			return
+		}
+
+		message.WriteString(fmt.Sprintf("- Flight %s on %s (Channel: %s)\n", flightID, dateDeparture.Format("02 Jan 2006"), channelID))
+	}
+
+	err = answerWebhook(r.FormValue("response_url"), message.String(), true)
+	if err != nil {
+		fmt.Println("Error sending Slack message:", err)
+	}
+}
+
+func RemoveFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlite.DB) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+
+	jsonResponse := `{
+		"response_type": "ephemeral",
+		"text": "processing your request..."
+	}`
+	w.Write([]byte(jsonResponse))
+
+	// get the command content
+	err := r.ParseForm()
+	if err != nil {
+		fmt.Println("Error parsing form:", err)
+		return
+	}
+
+	commandText := r.FormValue("text")
+
+	// only check for the flight number
+	flightNumber := strings.TrimSpace(commandText)
+
+	var message string
+
+	if !isValidFlightCode(flightNumber) {
+		message = "Invalid or unknown flight code. Please provide a valid flight number (e.g., AA100)."
+		err = answerWebhook(r.FormValue("response_url"), message, true)
+		if err != nil {
+			fmt.Println("Error sending Slack message:", err)
+		}
+		return
+	}
+
+	err = db.RemoveFlight(database, flightNumber, time.Time{})
+	if err != nil {
+		message = "Error removing flight from tracking."
+	} else {
+		message = fmt.Sprintf("Flight %s has been removed from tracking.", flightNumber)
+	}
+
+	err = answerWebhook(r.FormValue("response_url"), message, false)
+	if err != nil {
+		fmt.Println("Error sending Slack message:", err)
+	}
 }

@@ -46,7 +46,13 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Post("/api/track", func(w http.ResponseWriter, r *http.Request) {
-		slack.AddFlightHandler(w, r, bot.SlackToken, bot.Db)
+		slack.AddFlightHandler(w, r, bot.Db)
+	})
+	r.Post("/api/untrack", func(w http.ResponseWriter, r *http.Request) {
+		slack.RemoveFlightHandler(w, r, bot.Db)
+	})
+	r.Post("/api/list", func(w http.ResponseWriter, r *http.Request) {
+		slack.PrintAllTrackedFlights(w, r, bot.Db)
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("flight tracker running"))
