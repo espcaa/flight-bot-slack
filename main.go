@@ -108,7 +108,7 @@ func (b *Bot) pollFlights() {
 		if lastCruise.Valid {
 			f.LastCruiseNotif = lastCruise.Time
 		}
-		println("Polling flight:", f.FlightID, "Departure:", f.DateDeparture)
+		fmt.Println("Polling flight:", f.FlightID, "Departure:", f.DateDeparture)
 		b.checkAndNotifyFlight(f)
 	}
 }
