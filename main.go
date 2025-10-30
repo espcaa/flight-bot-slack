@@ -29,6 +29,9 @@ func main() {
 	r.Post("/api/track", func(w http.ResponseWriter, r *http.Request) {
 		slack.AddFlightHandler(w, r, bot.SlackToken)
 	})
+	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hiii ^-^"))
+	}
 	http.ListenAndServe(":"+port, r)
 	bot.Run()
 }
