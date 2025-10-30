@@ -19,13 +19,6 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlite.D
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 
-	jsonResponse := `{
-        "response_type": "ephemeral",
-        "text": "processing your request..."
-    }`
-
-	w.Write([]byte(jsonResponse))
-
 	// get the command content
 
 	// format [flight_number] [date]
@@ -177,11 +170,6 @@ func parseDate(input string) (time.Time, error) {
 func PrintAllTrackedFlights(w http.ResponseWriter, r *http.Request, database *sqlite.DB) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json_Response := `{
-		"response_type": "ephemeral",
-		"text": "processing your request..."
-	}`
-	w.Write([]byte(json_Response))
 
 	rows, err := database.Query("SELECT flight_id, date_departure, channel_id FROM tracked_flights")
 	if err != nil {
@@ -216,12 +204,6 @@ func PrintAllTrackedFlights(w http.ResponseWriter, r *http.Request, database *sq
 func RemoveFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlite.DB) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-
-	jsonResponse := `{
-		"response_type": "ephemeral",
-		"text": "processing your request..."
-	}`
-	w.Write([]byte(jsonResponse))
 
 	// get the command content
 	err := r.ParseForm()
