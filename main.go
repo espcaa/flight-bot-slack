@@ -108,6 +108,7 @@ func (b *Bot) pollFlights() {
 		if lastCruise.Valid {
 			f.LastCruiseNotif = lastCruise.Time
 		}
+		println("Polling flight:", f.FlightID, "Departure:", f.DateDeparture)
 		b.checkAndNotifyFlight(f)
 	}
 }
@@ -125,6 +126,8 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 
 	schedule := data.GetSchedule()
 	diff := schedule.DepartureScheduled.Sub(now)
+
+	println("Checking flight:", f.FlightID, "Status:", data.FlightStatus, "Departs in:", diff)
 
 	if !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0 {
 		sendSimpleSlack(b, f, "Flight departing soon!")
