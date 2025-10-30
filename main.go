@@ -39,6 +39,11 @@ func main() {
 		Db:         db,
 	}
 
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
+
 	r := chi.NewRouter()
 	r.Post("/api/track", func(w http.ResponseWriter, r *http.Request) {
 		slack.AddFlightHandler(w, r, bot.SlackToken, bot.Db)
@@ -46,7 +51,8 @@ func main() {
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("flight tracker running"))
 	})
-	go http.ListenAndServe(":8080", r)
+	go http.ListenAndServe(":"+port, r)
+	fmt.Println("Bot is running on port", port)
 
 	bot.Run()
 }
