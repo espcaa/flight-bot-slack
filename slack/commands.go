@@ -98,9 +98,15 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string,
 }
 
 func answerWebhook(webhookURL string, message string, ephemeral bool) error {
+	var responseType string
+	if ephemeral {
+		responseType = "ephemeral"
+	} else {
+		responseType = "in_channel"
+	}
 	payload := map[string]string{
 		"text":          message,
-		"response_type": "in_channel",
+		"response_type": responseType,
 	}
 	payloadBytes, err := json.Marshal(payload)
 	if err != nil {

@@ -139,6 +139,9 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	if !f.NotifiedLanding && data.FlightStatus == "landed" {
 		sendSimpleSlack(b, f, "Flight has landed!")
 		b.Db.Exec("UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		// remove flight from tracking after landing
+		b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		return
 	}
 
 	if data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour {
