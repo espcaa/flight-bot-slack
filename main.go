@@ -74,6 +74,7 @@ func initDB(path string) *sql.DB {
 		flight_id TEXT NOT NULL,
 		date_departure TIMESTAMP NOT NULL,
 		channel_id TEXT NOT NULL,
+		last_status TEXT,
 		notified_pre_departure BOOLEAN DEFAULT 0,
 		notified_takeoff BOOLEAN DEFAULT 0,
 		last_cruise_notif TIMESTAMP,
