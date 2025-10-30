@@ -81,8 +81,10 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, database *sqlite.D
 
 	message = fmt.Sprintf("Flight %s has been added for tracking on %s.", flightNumber, flightDate.Format("02 Jan 2006"))
 
-	db.AddFlight(database, flightNumber, flightDate, r.FormValue("channel_id"))
-
+	err = db.AddFlight(database, flightNumber, flightDate, r.FormValue("channel_id"))
+	if err != nil {
+		message = fmt.Sprintf("Error adding flight %s: %v", flightNumber, err)
+	}
 	err = answerWebhook(webhookURL, message, false)
 	if err != nil {
 		fmt.Println("Error sending Slack message:", err)
