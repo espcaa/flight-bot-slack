@@ -24,6 +24,16 @@ type FlightDetail struct {
 	Groundspeed        int            `json:"groundspeed"`
 	Heading            int            `json:"heading"`
 	Timestamp          int64          `json:"timestamp"`
+	Track              []TrackPoint   `json:"track"`
+}
+
+type TrackPoint struct {
+	Timestamp int64      `json:"timestamp"`
+	Coord     [2]float64 `json:"coord"`
+	Alt       int        `json:"alt"`
+	Gs        int        `json:"gs"`
+	Type      string     `json:"type"`
+	Isolated  bool       `json:"isolated"`
 }
 
 type AircraftDetail struct {

@@ -2,7 +2,10 @@ package slack
 
 import (
 	"bytes"
+	sqlite "database/sql"
 	"encoding/json"
+	"flight-tracker-slack/db"
+	"flight-tracker-slack/scraps"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +14,7 @@ import (
 	"time"
 )
 
-func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string) {
+func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string, database *sqlite.DB) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
@@ -58,8 +61,8 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string)
 	var message string
 
 	if !isValidFlightCode(flightNumber) {
-		message = "Invalid flight number format. Please use a format like 'AA123' or 'DL4567'."
-		err = answerWebhook(webhookURL, message)
+		message = "Invalid or unknown flight code. Please provide a valid flight number (e.g., AA100)."
+		err = answerWebhook(webhookURL, message, true)
 		if err != nil {
 			fmt.Println("Error sending Slack message:", err)
 		}
@@ -73,8 +76,8 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string)
 	} else {
 		parsedDate, err := parseDate(date)
 		if err != nil {
-			message = "Invalid date format. Please use 'today', 'tomorrow', or 'DD/MM/YYYY'."
-			err = answerWebhook(webhookURL, message)
+			message = "Invalid date format. Please use 'today', 'tomorrow', 'DD/MM/YYYY', 'YYYY-MM-DD', or 'DD-MM-YYYY'."
+			err = answerWebhook(webhookURL, message, true)
 			if err != nil {
 				fmt.Println("Error sending Slack message:", err)
 			}
@@ -84,14 +87,17 @@ func AddFlightHandler(w http.ResponseWriter, r *http.Request, slackToken string)
 	}
 
 	message = fmt.Sprintf("Flight %s has been added for tracking on %s.", flightNumber, flightDate.Format("02 Jan 2006"))
-	err = answerWebhook(webhookURL, message)
+
+	db.AddFlight(database, flightNumber, flightDate, r.FormValue("channel_id"))
+
+	err = answerWebhook(webhookURL, message, false)
 	if err != nil {
 		fmt.Println("Error sending Slack message:", err)
 	}
 
 }
 
-func answerWebhook(webhookURL string, message string) error {
+func answerWebhook(webhookURL string, message string, ephemeral bool) error {
 	payload := map[string]string{
 		"text":          message,
 		"response_type": "in_channel",
@@ -117,7 +123,22 @@ func answerWebhook(webhookURL string, message string) error {
 
 func isValidFlightCode(code string) bool {
 	re := regexp.MustCompile(`^[A-Z]{2,3}\d{1,4}$`)
-	return re.MatchString(code)
+	if re.MatchString(code) == false {
+		return false
+	}
+	// now make a request to flightaware to see if the flight exists
+	var result, err = scraps.GetFlightInfo(code)
+	if err != nil {
+		return false
+	}
+	var counter int = 0
+	for range result.Flights {
+		counter++
+	}
+	if counter > 0 {
+		return true
+	}
+	return false
 }
 
 func parseDate(input string) (time.Time, error) {
