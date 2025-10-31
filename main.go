@@ -216,7 +216,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("🛬 Flight *%s* has landed!\n Total Flight Time: *%s* %s", f.FlightID, totalFlightTime.Truncate(time.Minute), delayNote),
+						"text": fmt.Sprintf("🛬 Flight *%s* has landed!\n Total Flight Time: *%f*h %s", f.FlightID, totalFlightTime.Hours(), delayNote),
 					},
 				},
 				map[string]any{
@@ -278,7 +278,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: %s_ (in %d hours)", arrivalTime.Format("03:04 PM (2 Jan)"), int(arrivalTime.Sub(now).Hours())),
+						"text": fmt.Sprintf("_Estimated Arrival: %s_ (in %f hours)", arrivalTime.Format("03:04 PM (2 Jan)"), arrivalTime.Sub(now).Hours()),
 					},
 				},
 			}
