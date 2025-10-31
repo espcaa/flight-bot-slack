@@ -104,7 +104,6 @@ func (b *Bot) pollFlights() {
 		fmt.Println("Error querying tracked flights:", err)
 		return
 	}
-	defer rows.Close()
 
 	var flights []TrackedFlight
 	for rows.Next() {
@@ -119,6 +118,8 @@ func (b *Bot) pollFlights() {
 		}
 		flights = append(flights, f)
 	}
+
+	rows.Close()
 
 	var updates []FlightUpdate
 
