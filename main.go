@@ -132,7 +132,7 @@ func (b *Bot) pollFlights() {
 
 	for _, f := range flights {
 
-		data := fetchFlightData(b, f)
+		data := fetchFlightData(f)
 		if data.Airline.FullName == "" {
 			continue
 		}
@@ -371,7 +371,7 @@ func newFlightUpdate(flight TrackedFlight, updateType UpdateType, blocks []any) 
 	}
 }
 
-func fetchFlightData(b *Bot, f TrackedFlight) structs.FlightDetail {
+func fetchFlightData(f TrackedFlight) structs.FlightDetail {
 	wrapper, err := scraps.GetFlightInfo(f.FlightID)
 	if err != nil {
 		fmt.Println("Error fetching flight info:", err)
