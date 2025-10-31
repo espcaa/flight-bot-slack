@@ -64,7 +64,7 @@ func main() {
 }
 
 func initDB(path string) *sql.DB {
-	db, err := sql.Open("sqlite", path)
+	db, err := sql.Open("sqlite", "file:"+path+"?_busy_timeout=5000")
 	if err != nil {
 		panic(err)
 	}
@@ -90,7 +90,6 @@ func initDB(path string) *sql.DB {
 }
 
 func (b *Bot) Run() {
-	b.pollFlights()
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
@@ -106,6 +105,7 @@ func (b *Bot) pollFlights() {
 	}
 	defer rows.Close()
 
+	var flights []TrackedFlight
 	for rows.Next() {
 		var f TrackedFlight
 		var lastCruise sql.NullTime
@@ -116,7 +116,10 @@ func (b *Bot) pollFlights() {
 		if lastCruise.Valid {
 			f.LastCruiseNotif = lastCruise.Time
 		}
-		fmt.Println("Polling flight:", f.FlightID, "Departure:", f.DateDeparture)
+		flights = append(flights, f)
+	}
+
+	for _, f := range flights {
 		b.checkAndNotifyFlight(f)
 	}
 }
@@ -129,14 +132,12 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	}
 
 	data := fetchFlightData(f)
-
 	schedule := data.GetSchedule()
 	diff := schedule.DepartureScheduled.Sub(now)
 
-	println("Checking flight:", f.FlightID, "Status:", data.FlightStatus, "Departs in:", diff)
+	fmt.Printf("Checking flight: %s Status: %s Departs in: %.0f minutes\n", f.FlightID, data.FlightStatus, diff.Minutes())
 
 	if !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0 {
-
 		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
 		if err != nil {
 			sendSimpleSlack(b, f, "Error updating pre-departure notification status : "+err.Error())
@@ -146,7 +147,6 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	}
 
 	if !f.NotifiedTakeoff && data.FlightStatus == "departed" {
-
 		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
 		if err != nil {
 			sendSimpleSlack(b, f, "Error updating takeoff notification status : "+err.Error())
@@ -164,7 +164,6 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 		} else {
 			sendSimpleSlack(b, f, "Flight has landed!")
 		}
-		// remove flight from tracking after landing
 		_, err = b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
 		if err != nil {
 			sendSimpleSlack(b, f, "Error removing flight from tracking : "+err.Error())
@@ -175,7 +174,6 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	}
 
 	if data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour {
-
 		_, err := b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
 		if err != nil {
 			sendSimpleSlack(b, f, "Error updating cruise notification time : "+err.Error())
