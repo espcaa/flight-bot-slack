@@ -375,7 +375,6 @@ func fetchFlightData(b *Bot, f TrackedFlight) structs.FlightDetail {
 	wrapper, err := scraps.GetFlightInfo(f.FlightID)
 	if err != nil {
 		fmt.Println("Error fetching flight info:", err)
-		b.sendSimpleSlack(f, fmt.Sprintf("Could not retrieve flight data for %s", f.FlightID))
 		return structs.FlightDetail{}
 	}
 
