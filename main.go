@@ -234,9 +234,15 @@ func (b *Bot) pollFlights() {
 		case data.FlightStatus == "airborne" && now.Sub(f.LastCruiseNotif) >= 2*time.Minute && f.NotifiedTakeoff:
 
 			var lastTrackPoint structs.TrackPoint
-			if len(data.Track) > 0 {
-				lastTrackPoint = data.Track[len(data.Track)-1]
+
+			// take the one with the biggest timestamp
+
+			for _, tp := range data.Track {
+				if tp.Timestamp > lastTrackPoint.Timestamp {
+					lastTrackPoint = tp
+				}
 			}
+
 			mapImagePath, err := maps.GenerateAircraftMap(lastTrackPoint.Coord[0], lastTrackPoint.Coord[1], data.Track)
 			if err != nil {
 				fmt.Println("Error generating map:", err)
@@ -257,7 +263,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("✈️ Flight *%s* is currently cruising at an altitude of *%d ft* with a groundspeed of *%d knots*.", f.FlightID, data.Altitude, data.Groundspeed),
+						"text": fmt.Sprintf("✈️ Flight *%s* is currently cruising with a ground speed *%d knots*. (%d km remaining)", f.FlightID, data.Groundspeed, data.Distance.Remaining),
 					},
 				},
 				map[string]any{
