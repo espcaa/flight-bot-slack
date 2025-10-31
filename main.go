@@ -144,7 +144,7 @@ func (b *Bot) pollFlights() {
 				Type:   PreDeparture,
 				Msg:    fmt.Sprintf("Flight departs in %d minutes!", int(diff.Minutes())),
 			})
-		case !f.NotifiedTakeoff && data.FlightStatus == "departed":
+		case !f.NotifiedTakeoff && data.FlightStatus == "enroute":
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   Takeoff,
