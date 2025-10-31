@@ -21,7 +21,7 @@ func AddFlight(db *sql.DB, flightID string, departureDate time.Time, channelID s
 
 	_, err := db.Exec(query,
 		flightID,
-		departureDate,
+		departureDate.UTC().Format(time.RFC3339),
 		"",
 		false,
 		false,

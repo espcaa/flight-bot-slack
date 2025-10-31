@@ -314,21 +314,21 @@ func (b *Bot) updateFlightStatus(update FlightUpdate) {
 	case PreDeparture:
 		if !update.Flight.NotifiedPreDeparture {
 			query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
-			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+			args = []any{update.Flight.FlightID, update.Flight.DateDeparture.UTC().Format(time.RFC3339)}
 		}
 	case Takeoff:
 		if !update.Flight.NotifiedTakeoff {
 			query = "UPDATE tracked_flights SET notified_takeoff = 1, last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
-			args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+			args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture.UTC().Format(time.RFC3339)}
 		}
 	case Landing:
 		if !update.Flight.NotifiedLanding {
 			query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
-			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+			args = []any{update.Flight.FlightID, update.Flight.DateDeparture.UTC().Format(time.RFC3339)}
 		}
 	case Cruise:
 		query = "UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
-		args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+		args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture.UTC().Format(time.RFC3339)}
 	}
 
 	_, err := b.Db.Exec(query, args...)
