@@ -15,7 +15,7 @@ import (
 
 func GenerateAircraftMap(lat float64, lon float64, tracks []structs.TrackPoint, heading int) (string, error) {
 	ctx := sm.NewContext()
-	ctx.SetSize(400, 300)
+	ctx.SetSize(1200, 900)
 	ctx.SetZoom(2)
 
 	aircraftPos := s2.LatLngFromDegrees(lat, lon)
@@ -34,8 +34,8 @@ func GenerateAircraftMap(lat float64, lon float64, tracks []structs.TrackPoint, 
 	dc := gg.NewContextForImage(imga)
 	dc.RotateAbout(gg.Radians(float64(heading)), float64(imga.Bounds().Dx()/2), float64(imga.Bounds().Dy()/2))
 	rotated := dc.Image()
-
-	ctx.AddObject(sm.NewImageMarker(aircraftPos, rotated, 50, 50))
+	ctx.OverrideAttribution("")
+	ctx.AddObject(sm.NewImageMarker(aircraftPos, rotated, 1.0, 0))
 
 	if len(tracks) > 1 {
 		pathPositions := make([]s2.LatLng, 0, len(tracks))
