@@ -30,8 +30,8 @@ type FlightDetail struct {
 type TrackPoint struct {
 	Timestamp int64      `json:"timestamp"`
 	Coord     [2]float64 `json:"coord"`
-	Alt       int        `json:"alt"`
-	Gs        int        `json:"gs"`
+	Alt       float64    `json:"alt"`
+	Gs        float64    `json:"gs"`
 	Type      string     `json:"type"`
 	Isolated  bool       `json:"isolated"`
 }
