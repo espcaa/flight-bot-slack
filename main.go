@@ -178,12 +178,23 @@ func (b *Bot) pollFlights() {
 				delayNote = ""
 			}
 
+			arrivalScheduled := data.GetSchedule().ArrivalScheduled
+			arrivalEstimated := data.GetSchedule().ArrivalEstimated
+			ts := arrivalEstimated.Unix()
+
 			blocks := []any{
 				map[string]any{
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("🛫 Flight *%s* has taken off! \n Scheduled Arrival: *%s* %s", f.FlightID, data.GetSchedule().ArrivalScheduled.Format("15:04 MST, 02 Jan 2006"), delayNote),
+						"text": fmt.Sprintf(
+							"🛫 Flight *%s* has taken off!\nScheduled Arrival: *%s*\nEstimated Arrival: <!date^%d^At {time} on {date}|%s> (your local time) %s",
+							f.FlightID,
+							arrivalScheduled.Format("15:04 MST, 02 Jan 2006"),
+							ts,
+							arrivalEstimated.Format("15:04 MST, 02 Jan 2006"),
+							delayNote,
+						),
 					},
 				},
 				map[string]any{
@@ -263,6 +274,9 @@ func (b *Bot) pollFlights() {
 				continue
 			}
 
+			arrivalTime := data.GetSchedule().ArrivalEstimated
+			ts := arrivalTime.Unix()
+
 			blocks := []any{
 				map[string]any{
 					"type": "section",
@@ -283,7 +297,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: *%s*_", data.GetSchedule().ArrivalEstimated.Format("15:04 MST, 02 Jan 2006")),
+						"text": fmt.Sprintf("_Estimated Arrival: <!date^%d^At {time} on {date}|%s>_", ts, arrivalTime.Format("15:04 MST, 02 Jan 2006")),
 					},
 				},
 			}
