@@ -14,8 +14,8 @@ import (
 
 func GenerateAircraftMap(lat float64, lon float64, tracks []structs.TrackPoint) (string, error) {
 	ctx := sm.NewContext()
-	ctx.SetSize(800, 600)
-	ctx.SetZoom(0)
+	ctx.SetSize(400, 300)
+	ctx.SetZoom(2)
 
 	aircraftPos := s2.LatLngFromDegrees(lat, lon)
 	ctx.AddObject(sm.NewMarker(aircraftPos, color.RGBA{0, 255, 0, 255}, 16.0))
