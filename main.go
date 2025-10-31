@@ -167,7 +167,7 @@ func (b *Bot) pollFlights() {
 			var delayTime = data.GetSchedule().DepartureActual.Sub(data.GetSchedule().DepartureScheduled)
 			var delayNote string
 			if delayTime > 0 {
-				delayNote = fmt.Sprintf("\n(The flight was delayed by %s)", delayTime.Truncate(time.Minute))
+				delayNote = fmt.Sprintf("\n(delayed by %s)", delayTime.Truncate(time.Minute))
 			} else {
 				delayNote = ""
 			}
@@ -278,7 +278,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: %s_", arrivalTime.Format("03:04 PM (2 Jan)")),
+						"text": fmt.Sprintf("_Estimated Arrival: %s_ (in %d hours)", arrivalTime.Format("03:04 PM (2 Jan)"), int(arrivalTime.Sub(now).Hours())),
 					},
 				},
 			}
