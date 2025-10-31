@@ -99,6 +99,9 @@ func (b *Bot) Run() {
 }
 
 func (b *Bot) pollFlights() {
+
+	fmt.Println("Polling tracked flights...")
+
 	rows, err := b.Db.Query("SELECT flight_id, channel_id, date_departure, notified_pre_departure, notified_takeoff, last_cruise_notif, notified_landing FROM tracked_flights")
 	if err != nil {
 		fmt.Println("Error querying tracked flights:", err)
@@ -117,6 +120,7 @@ func (b *Bot) pollFlights() {
 			f.LastCruiseNotif = lastCruise.Time
 		}
 		flights = append(flights, f)
+		fmt.Printf("Tracked flight: %s departing at %s\n", f.FlightID, f.DateDeparture.UTC().Format(time.RFC3339))
 	}
 
 	rows.Close()
@@ -159,9 +163,12 @@ func (b *Bot) pollFlights() {
 				Msg:    "Flight is still enroute. Cruising update.",
 			})
 		}
+
+		fmt.Printf("Checked flight %s: status=%s\n", f.FlightID, data.FlightStatus)
 	}
 
 	for _, update := range updates {
+		fmt.Printf("Sending update for flight %s: type=%d\n", update.Flight.FlightID, update.Type)
 		sendSimpleSlack(b, update.Flight, update.Msg)
 		b.updateFlightStatus(update)
 	}
