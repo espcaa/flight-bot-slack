@@ -243,7 +243,7 @@ func (b *Bot) pollFlights() {
 				}
 			}
 
-			mapImagePath, err := maps.GenerateAircraftMap(lastTrackPoint.Coord[0], lastTrackPoint.Coord[1], data.Track)
+			mapImagePath, err := maps.GenerateAircraftMap(lastTrackPoint.Coord[1], lastTrackPoint.Coord[0], data.Track)
 			if err != nil {
 				fmt.Println("Error generating map:", err)
 				continue
