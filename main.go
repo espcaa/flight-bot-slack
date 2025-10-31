@@ -90,6 +90,7 @@ func initDB(path string) *sql.DB {
 }
 
 func (b *Bot) Run() {
+	b.pollFlights()
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
