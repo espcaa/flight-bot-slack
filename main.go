@@ -188,11 +188,10 @@ func (b *Bot) pollFlights() {
 					"text": map[string]string{
 						"type": "mrkdwn",
 						"text": fmt.Sprintf(
-							"🛫 Flight *%s* has taken off!\nEstimated Arrival: <!date^%d^{time} on {date}|%s> (on your timezone, local time %s) %s",
+							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s (on your timezone, local time <!date^%d^{time} >)%s",
 							f.FlightID,
+							arrivalScheduled.Format("03:04 PM (2 Jan)"),
 							ts,
-							arrivalEstimated.Format("15:04 MST, 02 Jan 2006"),
-							arrivalScheduled.Format("15:04 PM"),
 							delayNote,
 						),
 					},
