@@ -120,68 +120,104 @@ func (b *Bot) pollFlights() {
 		flights = append(flights, f)
 	}
 
+	var updates []FlightUpdate
+
 	for _, f := range flights {
-		b.checkAndNotifyFlight(f)
+
+		data := fetchFlightData(f)
+		if data.Airline.FullName == "" {
+			continue
+		}
+
+		now := time.Now().UTC()
+		diff := f.DateDeparture.Sub(now)
+
+		switch {
+		case !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0:
+			updates = append(updates, FlightUpdate{
+				Flight: f,
+				Type:   PreDeparture,
+				Msg:    fmt.Sprintf("Flight departs in %d minutes!", int(diff.Minutes())),
+			})
+		case !f.NotifiedTakeoff && data.FlightStatus == "departed":
+			updates = append(updates, FlightUpdate{
+				Flight: f,
+				Type:   Takeoff,
+				Msg:    "Flight has taken off!",
+			})
+		case !f.NotifiedLanding && data.FlightStatus == "landed":
+			updates = append(updates, FlightUpdate{
+				Flight: f,
+				Type:   Landing,
+				Msg:    "Flight has landed!",
+			})
+		case data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour:
+			updates = append(updates, FlightUpdate{
+				Flight: f,
+				Type:   Cruise,
+				Msg:    "Flight is still enroute. Cruising update.",
+			})
+		}
+	}
+
+	for _, update := range updates {
+		sendSimpleSlack(b, update.Flight, update.Msg)
+		b.updateFlightStatus(update)
 	}
 }
 
-func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
-	now := time.Now().UTC()
-	if f.DateDeparture.Before(now.Add(-24 * time.Hour)) {
-		fmt.Println("Skipping flight:", f.FlightID, "as it departed more than 24 hours ago.")
+func (b *Bot) updateFlightStatus(update FlightUpdate) {
+	var query string
+	args := []any{}
+
+	switch update.Type {
+	case PreDeparture:
+		query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
+		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+	case Takeoff:
+		query = "UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?"
+		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+	case Landing:
+		query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
+		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+	case Cruise:
+		query = "UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
+		args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+	}
+
+	_, err := b.Db.Exec(query, args...)
+	if err != nil {
+		fmt.Println("Error updating flight status:", err)
 		return
 	}
 
-	data := fetchFlightData(f)
-	schedule := data.GetSchedule()
-	diff := schedule.DepartureScheduled.Sub(now)
-
-	fmt.Printf("Checking flight: %s Status: %s Departs in: %.0f minutes\n", f.FlightID, data.FlightStatus, diff.Minutes())
-
-	if !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0 {
-		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
-		if err != nil {
-			sendSimpleSlack(b, f, "Error updating pre-departure notification status : "+err.Error())
-		} else {
-			sendSimpleSlack(b, f, fmt.Sprintf("Flight departs in %d minutes!", int(diff.Minutes())))
-		}
+	if update.Msg != "" {
+		sendSimpleSlack(b, update.Flight, update.Msg)
 	}
 
-	if !f.NotifiedTakeoff && data.FlightStatus == "departed" {
-		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+	if update.Type == Landing {
+		_, err := b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", update.Flight.FlightID, update.Flight.DateDeparture)
 		if err != nil {
-			sendSimpleSlack(b, f, "Error updating takeoff notification status : "+err.Error())
+			fmt.Println("Error deleting landed flight:", err)
 		} else {
-			sendSimpleSlack(b, f, "Flight has taken off!")
+			sendSimpleSlack(b, update.Flight, "Flight has been removed from tracking.")
 		}
-		return
 	}
+}
 
-	if !f.NotifiedLanding && data.FlightStatus == "landed" {
-		sendSimpleSlack(b, f, "Flight has landed!")
-		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
-		if err != nil {
-			sendSimpleSlack(b, f, "Error updating landing notification status : "+err.Error())
-		} else {
-			sendSimpleSlack(b, f, "Flight has landed!")
-		}
-		_, err = b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
-		if err != nil {
-			sendSimpleSlack(b, f, "Error removing flight from tracking : "+err.Error())
-		} else {
-			sendSimpleSlack(b, f, "Flight has been removed from tracking.")
-		}
-		return
-	}
+type UpdateType int
 
-	if data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour {
-		_, err := b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
-		if err != nil {
-			sendSimpleSlack(b, f, "Error updating cruise notification time : "+err.Error())
-		} else {
-			sendSimpleSlack(b, f, "Flight is still enroute. Cruising update.")
-		}
-	}
+const (
+	PreDeparture UpdateType = iota
+	Takeoff
+	Landing
+	Cruise
+)
+
+type FlightUpdate struct {
+	Flight TrackedFlight
+	Type   UpdateType
+	Msg    string
 }
 
 func fetchFlightData(f TrackedFlight) structs.FlightDetail {
