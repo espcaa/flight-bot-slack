@@ -156,7 +156,7 @@ func (b *Bot) pollFlights() {
 				Type:   Landing,
 				Msg:    "Flight has landed!",
 			})
-		case data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour:
+		case data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour && f.NotifiedTakeoff:
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   Cruise,
