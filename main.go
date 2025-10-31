@@ -232,7 +232,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Arrived at %s, Gate %s_", data.Destination.Terminal, data.Destination.Gate),
+						"text": fmt.Sprintf("_Arrived at Terminal %s, Gate %s_", data.Destination.Terminal, data.Destination.Gate),
 					},
 				},
 			}
@@ -312,14 +312,20 @@ func (b *Bot) updateFlightStatus(update FlightUpdate) {
 
 	switch update.Type {
 	case PreDeparture:
-		query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
-		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+		if !update.Flight.NotifiedPreDeparture {
+			query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
+			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+		}
 	case Takeoff:
-		query = "UPDATE tracked_flights SET notified_takeoff = 1 AND last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
-		args = []any{update.Flight.FlightID, update.Flight.DateDeparture, time.Now().UTC()}
+		if !update.Flight.NotifiedTakeoff {
+			query = "UPDATE tracked_flights SET notified_takeoff = 1, last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
+			args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+		}
 	case Landing:
-		query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
-		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+		if !update.Flight.NotifiedLanding {
+			query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
+			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+		}
 	case Cruise:
 		query = "UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
 		args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
@@ -340,7 +346,8 @@ func (b *Bot) updateFlightStatus(update FlightUpdate) {
 	if update.Type == Landing {
 		_, err := b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", update.Flight.FlightID, update.Flight.DateDeparture)
 		if err != nil {
-			fmt.Println("Error deleting landed flight:", err)
+			sendSimpleSlack(b, update.Flight, fmt.Sprintf("Error removing landed flight %s from tracking: %v", update.Flight.FlightID, err))
+			fmt.Println("Error removing landed flight:", err)
 		}
 	}
 }
