@@ -182,11 +182,9 @@ func (b *Bot) pollFlights() {
 					"text": map[string]string{
 						"type": "mrkdwn",
 						"text": fmt.Sprintf(
-							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s, for you : <!date^%d^At {time} on {date}|%s>%s",
+							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s %s",
 							f.FlightID,
 							arrivalScheduled.Format("03:04 PM (2 Jan)"),
-							ts,
-							arrivalEstimated.Format("03:04 PM MST, 02 Jan 2006"),
 							delayNote,
 						),
 					},
@@ -277,7 +275,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: <!date^%d^At {time} on {date}|%s>_", ts, arrivalTime.Format("15:04 MST, 02 Jan 2006")),
+						"text": fmt.Sprintf("_Estimated Arrival: %s_", ts, arrivalTime.Format("03:04 PM (2 Jan)")),
 					},
 				},
 			}
