@@ -231,7 +231,7 @@ func (b *Bot) pollFlights() {
 				},
 			}
 			updates = append(updates, newFlightUpdate(f, Landing, blocks))
-		case data.FlightStatus == "airborne" && now.Sub(f.LastCruiseNotif) >= 2*time.Minute && f.NotifiedTakeoff:
+		case data.FlightStatus == "airborne" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour && f.NotifiedTakeoff:
 
 			var lastTrackPoint structs.TrackPoint
 
