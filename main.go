@@ -251,7 +251,6 @@ func (b *Bot) pollFlights() {
 			}
 
 			arrivalTime := data.GetSchedule().ArrivalEstimated
-			ts := arrivalTime.Unix()
 
 			blocks := []any{
 				map[string]any{
