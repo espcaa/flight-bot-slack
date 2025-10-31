@@ -308,46 +308,54 @@ func (b *Bot) pollFlights() {
 
 func (b *Bot) updateFlightStatus(update FlightUpdate) {
 	var query string
-	args := []any{}
+	var args []any
+	shouldSend := false
 
 	switch update.Type {
 	case PreDeparture:
 		if !update.Flight.NotifiedPreDeparture {
 			query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
 			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+			shouldSend = true
 		}
 	case Takeoff:
 		if !update.Flight.NotifiedTakeoff {
 			query = "UPDATE tracked_flights SET notified_takeoff = 1, last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
 			args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+			shouldSend = true
 		}
 	case Landing:
 		if !update.Flight.NotifiedLanding {
 			query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
 			args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+			shouldSend = true
 		}
 	case Cruise:
 		query = "UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
 		args = []any{time.Now().UTC(), update.Flight.FlightID, update.Flight.DateDeparture}
+		shouldSend = true
 	}
 
-	_, err := b.Db.Exec(query, args...)
-	if err != nil {
-		fmt.Println("Error updating flight status:", err)
-		return
-	}
-
-	err = slack.SendSlackMessageTyped(update.Msg, b.SlackToken)
-	if err != nil {
-		fmt.Println("Slack error:", err)
-		return
-	}
-
-	if update.Type == Landing {
-		_, err := b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", update.Flight.FlightID, update.Flight.DateDeparture)
+	if shouldSend {
+		_, err := b.Db.Exec(query, args...)
 		if err != nil {
-			sendSimpleSlack(b, update.Flight, fmt.Sprintf("Error removing landed flight %s from tracking: %v", update.Flight.FlightID, err))
-			fmt.Println("Error removing landed flight:", err)
+			fmt.Println("Error updating flight status:", err)
+			return
+		}
+
+		err = slack.SendSlackMessageTyped(update.Msg, b.SlackToken)
+		if err != nil {
+			fmt.Println("Slack error:", err)
+			return
+		}
+
+		// Delete landed flights after notifying
+		if update.Type == Landing {
+			_, err := b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", update.Flight.FlightID, update.Flight.DateDeparture)
+			if err != nil {
+				sendSimpleSlack(b, update.Flight, fmt.Sprintf("Error removing landed flight %s from tracking: %v", update.Flight.FlightID, err))
+				fmt.Println("Error removing landed flight:", err)
+			}
 		}
 	}
 }
