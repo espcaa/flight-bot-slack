@@ -122,12 +122,15 @@ func (b *Bot) pollFlights() {
 
 func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	now := time.Now().UTC()
-	if f.DateDeparture.Before(now.Add(-2 * time.Hour)) {
+	if f.DateDeparture.Before(now.Add(-24 * time.Hour)) {
+		fmt.Println("Skipping flight:", f.FlightID, "as it departed more than 24 hours ago.")
 		return
 	}
 
 	data := fetchFlightData(f)
 	if data.FlightStatus == "" && data.FlightPlan.Route == "" {
+		fmt.Println("No data found for flight:", f.FlightID)
+		fmt.Println("Data:", data)
 		return
 	}
 
