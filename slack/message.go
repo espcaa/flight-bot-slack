@@ -8,9 +8,14 @@ import (
 )
 
 type SlackMessage struct {
-	Channel string        `json:"channel"`
-	Text    string        `json:"text,omitempty"`
-	Blocks  []interface{} `json:"blocks,omitempty"`
+	Channel string `json:"channel"`
+	Text    string `json:"text,omitempty"`
+	Blocks  []any  `json:"blocks,omitempty"`
+}
+
+func SendSlackMessageTyped(msg SlackMessage, slackToken string) error {
+	err := SendSlackMessage(msg.Channel, slackToken, msg.Text, msg.Blocks)
+	return err
 }
 
 func SendSlackMessage(channelID string, slackToken string, message string, blocks []interface{}) error {

@@ -94,8 +94,10 @@ type PerformanceDetail struct {
 type FlightSchedule struct {
 	DepartureScheduled time.Time
 	DepartureActual    time.Time
+	DepartureEstimated time.Time
 	ArrivalScheduled   time.Time
 	ArrivalEstimated   time.Time
+	ArrivalActual      time.Time
 }
 
 func (g GateTimes) ToTime(t *int64) time.Time {
@@ -109,7 +111,9 @@ func (fd *FlightDetail) GetSchedule() FlightSchedule {
 	return FlightSchedule{
 		DepartureScheduled: fd.GateDepartureTimes.ToTime(&fd.GateDepartureTimes.Scheduled),
 		DepartureActual:    fd.GateDepartureTimes.ToTime(fd.GateDepartureTimes.Actual),
+		DepartureEstimated: fd.GateDepartureTimes.ToTime(fd.GateDepartureTimes.Estimated),
 		ArrivalScheduled:   fd.GateArrivalTimes.ToTime(&fd.GateArrivalTimes.Scheduled),
 		ArrivalEstimated:   fd.GateArrivalTimes.ToTime(fd.GateArrivalTimes.Estimated),
+		ArrivalActual:      fd.GateArrivalTimes.ToTime(fd.GateArrivalTimes.Actual),
 	}
 }

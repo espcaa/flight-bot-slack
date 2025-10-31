@@ -11,6 +11,8 @@ import (
 	"github.com/joho/godotenv"
 	_ "modernc.org/sqlite"
 
+	"flight-tracker-slack/cdn"
+	"flight-tracker-slack/maps"
 	"flight-tracker-slack/scraps"
 	"flight-tracker-slack/slack"
 	structs "flight-tracker-slack/types"
@@ -139,28 +141,159 @@ func (b *Bot) pollFlights() {
 
 		switch {
 		case !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0:
+			blocks := []any{
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("Flight *%s* (%s → %s) is scheduled to depart in less than 30 minutes!", f.FlightID, data.Origin.Iata, data.Destination.Iata),
+					},
+				},
+				map[string]any{
+					"type": "divider",
+				},
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("_Terminal %s, Gate %s_", data.Origin.Terminal, data.Origin.Gate),
+					},
+				},
+			}
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   PreDeparture,
-				Msg:    fmt.Sprintf("Flight departs in %d minutes!", int(diff.Minutes())),
+				Msg: slack.SlackMessage{
+					Channel: f.ChannelID,
+					Blocks:  blocks,
+				},
 			})
-		case !f.NotifiedTakeoff && data.FlightStatus == "enroute":
+		case !f.NotifiedTakeoff && data.FlightStatus == "airborne":
+
+			var delayTime = data.GetSchedule().DepartureActual.Sub(data.GetSchedule().DepartureScheduled)
+			var delayNote string
+			if delayTime > 0 {
+				delayNote = fmt.Sprintf("\n(The flight was delayed by %s)", delayTime.Truncate(time.Minute))
+			} else {
+				delayNote = ""
+			}
+
+			blocks := []any{
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("🛫 Flight *%s* has taken off! \n Scheduled Arrival: *%s* %s", f.FlightID, data.GetSchedule().ArrivalScheduled.Format("15:04 MST, 02 Jan 2006"), delayNote),
+					},
+				},
+				map[string]any{
+					"type": "divider",
+				},
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("_Aircraft : *%s* (%s)_", data.Aircraft.FriendlyType, data.Aircraft.Type),
+					},
+				},
+			}
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   Takeoff,
-				Msg:    "Flight has taken off!",
+				Msg: slack.SlackMessage{
+					Channel: f.ChannelID,
+					Blocks:  blocks,
+				},
 			})
-		case !f.NotifiedLanding && data.FlightStatus == "landed":
+		case !f.NotifiedLanding && data.FlightStatus == "arrived":
+
+			totalFlightTime := data.GetSchedule().ArrivalActual.Sub(data.GetSchedule().DepartureActual)
+
+			delayTime := data.GetSchedule().ArrivalActual.Sub(data.GetSchedule().ArrivalScheduled)
+			var delayNote string
+			if delayTime > 0 {
+				delayNote = fmt.Sprintf("\n(The flight was delayed by %s)", delayTime.Truncate(time.Minute))
+			} else {
+				delayNote = ""
+			}
+
+			blocks := []any{
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("🛬 Flight *%s* has landed!\n Total Flight Time: *%s* %s", f.FlightID, totalFlightTime.Truncate(time.Minute), delayNote),
+					},
+				},
+				map[string]any{
+					"type": "divider",
+				},
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("_Arrived at %s, Gate %s_", data.Destination.Terminal, data.Destination.Gate),
+					},
+				},
+			}
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   Landing,
-				Msg:    "Flight has landed!",
+				Msg: slack.SlackMessage{
+					Channel: f.ChannelID,
+					Blocks:  blocks,
+				},
 			})
-		case data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour && f.NotifiedTakeoff:
+		case data.FlightStatus == "airborne" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour && f.NotifiedTakeoff:
+
+			var lastTrackPoint structs.TrackPoint
+			if len(data.Track) > 0 {
+				lastTrackPoint = data.Track[len(data.Track)-1]
+			}
+			mapImagePath, err := maps.GenerateAircraftMap(lastTrackPoint.Coord[0], lastTrackPoint.Coord[1], data.Track)
+			if err != nil {
+				fmt.Println("Error generating map:", err)
+				continue
+			}
+			defer os.Remove(mapImagePath)
+
+			flightMapURL, err := cdn.UploadFile(mapImagePath)
+			if err != nil {
+				fmt.Println("Error uploading map to CDN:", err)
+				continue
+			}
+
+			blocks := []any{
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("✈️ Flight *%s* is currently cruising at an altitude of *%d ft* with a groundspeed of *%d knots*.", f.FlightID, data.Altitude, data.Groundspeed),
+					},
+				},
+				map[string]any{
+					"type":      "image",
+					"image_url": flightMapURL,
+					"alt_text":  "Aircraft Position Map",
+				},
+				map[string]any{
+					"type": "divider",
+				},
+				map[string]any{
+					"type": "section",
+					"text": map[string]string{
+						"type": "mrkdwn",
+						"text": fmt.Sprintf("_Estimated Arrival: *%s*_", data.GetSchedule().ArrivalEstimated.Format("15:04 MST, 02 Jan 2006")),
+					},
+				},
+			}
 			updates = append(updates, FlightUpdate{
 				Flight: f,
 				Type:   Cruise,
-				Msg:    "Flight is still enroute. Cruising update.",
+				Msg: slack.SlackMessage{
+					Channel: f.ChannelID,
+					Blocks:  blocks,
+				},
 			})
 		}
 
@@ -169,7 +302,6 @@ func (b *Bot) pollFlights() {
 
 	for _, update := range updates {
 		fmt.Printf("Sending update for flight %s: type=%d\n", update.Flight.FlightID, update.Type)
-		sendSimpleSlack(b, update.Flight, update.Msg)
 		b.updateFlightStatus(update)
 	}
 }
@@ -183,8 +315,8 @@ func (b *Bot) updateFlightStatus(update FlightUpdate) {
 		query = "UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?"
 		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
 	case Takeoff:
-		query = "UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?"
-		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
+		query = "UPDATE tracked_flights SET notified_takeoff = 1 AND last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?"
+		args = []any{update.Flight.FlightID, update.Flight.DateDeparture, time.Now().UTC()}
 	case Landing:
 		query = "UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?"
 		args = []any{update.Flight.FlightID, update.Flight.DateDeparture}
@@ -199,16 +331,16 @@ func (b *Bot) updateFlightStatus(update FlightUpdate) {
 		return
 	}
 
-	if update.Msg != "" {
-		sendSimpleSlack(b, update.Flight, update.Msg)
+	err = slack.SendSlackMessageTyped(update.Msg, b.SlackToken)
+	if err != nil {
+		fmt.Println("Slack error:", err)
+		return
 	}
 
 	if update.Type == Landing {
 		_, err := b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", update.Flight.FlightID, update.Flight.DateDeparture)
 		if err != nil {
 			fmt.Println("Error deleting landed flight:", err)
-		} else {
-			sendSimpleSlack(b, update.Flight, "Flight has been removed from tracking.")
 		}
 	}
 }
@@ -225,7 +357,7 @@ const (
 type FlightUpdate struct {
 	Flight TrackedFlight
 	Type   UpdateType
-	Msg    string
+	Msg    slack.SlackMessage
 }
 
 func fetchFlightData(f TrackedFlight) structs.FlightDetail {
