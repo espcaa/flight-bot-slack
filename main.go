@@ -129,11 +129,6 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	}
 
 	data := fetchFlightData(f)
-	if data.FlightStatus == "" && data.FlightPlan.Route == "" {
-		fmt.Println("No data found for flight:", f.FlightID)
-		fmt.Println("Data:", data)
-		return
-	}
 
 	schedule := data.GetSchedule()
 	diff := schedule.DepartureScheduled.Sub(now)
