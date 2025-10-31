@@ -172,9 +172,7 @@ func (b *Bot) pollFlights() {
 				delayNote = ""
 			}
 
-			arrivalScheduled := data.GetSchedule().ArrivalScheduled
 			arrivalEstimated := data.GetSchedule().ArrivalEstimated
-			ts := arrivalEstimated.Unix()
 
 			blocks := []any{
 				map[string]any{
@@ -184,7 +182,7 @@ func (b *Bot) pollFlights() {
 						"text": fmt.Sprintf(
 							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s %s",
 							f.FlightID,
-							arrivalScheduled.Format("03:04 PM (2 Jan)"),
+							arrivalEstimated.Format("03:04 PM (2 Jan)"),
 							delayNote,
 						),
 					},
