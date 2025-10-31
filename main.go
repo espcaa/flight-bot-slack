@@ -55,7 +55,7 @@ func main() {
 		slack.PrintAllTrackedFlights(w, r, bot.Db)
 	})
 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("flight tracker running"))
+		w.Write([]byte("hi :3"))
 	})
 	go http.ListenAndServe(":"+port, r)
 	fmt.Println("Bot is running on port", port)
@@ -137,26 +137,52 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 	println("Checking flight:", f.FlightID, "Status:", data.FlightStatus, "Departs in:", diff)
 
 	if !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0 {
-		sendSimpleSlack(b, f, "Flight departing soon!")
-		b.Db.Exec("UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+
+		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_pre_departure = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		if err != nil {
+			sendSimpleSlack(b, f, "Error updating pre-departure notification status : "+err.Error())
+		} else {
+			sendSimpleSlack(b, f, fmt.Sprintf("Flight departs in %d minutes!", int(diff.Minutes())))
+		}
 	}
 
 	if !f.NotifiedTakeoff && data.FlightStatus == "departed" {
-		sendSimpleSlack(b, f, "Flight has taken off!")
-		b.Db.Exec("UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+
+		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_takeoff = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		if err != nil {
+			sendSimpleSlack(b, f, "Error updating takeoff notification status : "+err.Error())
+		} else {
+			sendSimpleSlack(b, f, "Flight has taken off!")
+		}
+		return
 	}
 
 	if !f.NotifiedLanding && data.FlightStatus == "landed" {
 		sendSimpleSlack(b, f, "Flight has landed!")
-		b.Db.Exec("UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		_, err := b.Db.Exec("UPDATE tracked_flights SET notified_landing = 1 WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		if err != nil {
+			sendSimpleSlack(b, f, "Error updating landing notification status : "+err.Error())
+		} else {
+			sendSimpleSlack(b, f, "Flight has landed!")
+		}
 		// remove flight from tracking after landing
-		b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		_, err = b.Db.Exec("DELETE FROM tracked_flights WHERE flight_id = ? AND date_departure = ?", f.FlightID, f.DateDeparture)
+		if err != nil {
+			sendSimpleSlack(b, f, "Error removing flight from tracking : "+err.Error())
+		} else {
+			sendSimpleSlack(b, f, "Flight has been removed from tracking.")
+		}
 		return
 	}
 
 	if data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour {
-		sendSimpleSlack(b, f, "Flight is cruising")
-		b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
+
+		_, err = b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
+		if err != nil {
+			sendSimpleSlack(b, f, "Error updating cruise notification time : "+err.Error())
+		} else {
+			sendSimpleSlack(b, f, "Flight is still enroute. Cruising update.")
+		}
 	}
 }
 
