@@ -137,7 +137,7 @@ func (b *Bot) pollFlights() {
 		}
 
 		now := time.Now().UTC()
-		diff := f.DateDeparture.Sub(now)
+		diff := data.GetSchedule().DepartureScheduled.Sub(now)
 
 		switch {
 		case !f.NotifiedPreDeparture && diff <= 30*time.Minute && diff > 0:
