@@ -273,7 +273,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: %s_", ts, arrivalTime.Format("03:04 PM (2 Jan)")),
+						"text": fmt.Sprintf("_Estimated Arrival: %s_", arrivalTime.Format("03:04 PM (2 Jan)")),
 					},
 				},
 			}
