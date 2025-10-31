@@ -177,7 +177,7 @@ func (b *Bot) checkAndNotifyFlight(f TrackedFlight) {
 
 	if data.FlightStatus == "enroute" && now.Sub(f.LastCruiseNotif) >= 2*time.Hour {
 
-		_, err = b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
+		_, err := b.Db.Exec("UPDATE tracked_flights SET last_cruise_notif = ? WHERE flight_id = ? AND date_departure = ?", now, f.FlightID, f.DateDeparture)
 		if err != nil {
 			sendSimpleSlack(b, f, "Error updating cruise notification time : "+err.Error())
 		} else {
