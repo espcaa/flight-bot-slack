@@ -180,9 +180,10 @@ func (b *Bot) pollFlights() {
 					"text": map[string]string{
 						"type": "mrkdwn",
 						"text": fmt.Sprintf(
-							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s %s",
+							"🛫 Flight *%s* has taken off!\nEstimated Arrival: %s (in about %.1f hours) %s",
 							f.FlightID,
 							arrivalEstimated.Format("03:04 PM (2 Jan)"),
+							arrivalEstimated.Sub(now).Truncate(time.Minute).Hours(),
 							delayNote,
 						),
 					},
@@ -201,8 +202,6 @@ func (b *Bot) pollFlights() {
 			updates = append(updates, newFlightUpdate(f, Takeoff, blocks))
 		case !f.NotifiedLanding && data.FlightStatus == "arrived":
 
-			totalFlightTime := data.GetSchedule().ArrivalActual.Sub(data.GetSchedule().DepartureActual)
-
 			delayTime := data.GetSchedule().ArrivalActual.Sub(data.GetSchedule().ArrivalScheduled)
 			var delayNote string
 			if delayTime > 0 {
@@ -211,12 +210,21 @@ func (b *Bot) pollFlights() {
 				delayNote = ""
 			}
 
+			var gate = data.Destination.Gate
+			if gate == "" {
+				gate = "unknown"
+			}
+			var terminal = data.Destination.Terminal
+			if terminal == "" {
+				terminal = "unknown"
+			}
+
 			blocks := []any{
 				map[string]any{
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("🛬 Flight *%s* has landed!\n Total Flight Time: *%f*h %s", f.FlightID, totalFlightTime.Hours(), delayNote),
+						"text": fmt.Sprintf("🛬 Flight *%s* has landed! %s", f.FlightID, delayNote),
 					},
 				},
 				map[string]any{
@@ -226,7 +234,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Arrived at Terminal %s, Gate %s_", data.Destination.Terminal, data.Destination.Gate),
+						"text": fmt.Sprintf("_Arrived at Terminal %s, Gate %s_", terminal, gate),
 					},
 				},
 			}
@@ -278,7 +286,7 @@ func (b *Bot) pollFlights() {
 					"type": "section",
 					"text": map[string]string{
 						"type": "mrkdwn",
-						"text": fmt.Sprintf("_Estimated Arrival: %s_ (in %f hours)", arrivalTime.Format("03:04 PM (2 Jan)"), arrivalTime.Sub(now).Hours()),
+						"text": fmt.Sprintf("_Estimated Arrival: %s_ (in %f hours)", arrivalTime.Format("03:04 PM"), arrivalTime.Sub(now).Hours()),
 					},
 				},
 			}
